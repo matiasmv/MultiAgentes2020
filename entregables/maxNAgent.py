@@ -43,12 +43,15 @@ class MaxNAgent(Agent):
             con una shape modificada.
         Args:
             gameState (GameStateExtended): [estado del juego]
-            agentIndex ([type]): [indice del agente]
+            agentIndex ([int]): [indice del agente]
         Returns:
-            [type]: [description]
+            [array]: [rewards de los agentes]
         """
         processed_obs = game_util.process_state_ghost(
             gameState, self.view_distance, agentIndex)
+
+        print("obs")
+        print(processed_obs)
         # TODO: Implementar función de evaluación que utilice "processed_obs"
         rewards = []
         fantasma_x, fantasma_y, fantamsa_v = self.find_procesed_obs_values(processed_obs, [7,8])
@@ -66,15 +69,15 @@ class MaxNAgent(Agent):
 
         obs = processed_obs
         # prueba de camino al pacman 
-        print(min_x, max_x)
-        print(min_y, max_y)
+        # print(min_x, max_x)
+        # print(min_y, max_y)
         for i in range(min_x, max_x):
             next_x_move = (i+1) * direccion_x
-            if next_x_move >=min_x and next_x_move < max_x:
+            if next_x_move >=min_x and next_x_move <= max_x:
                 value = obs[next_x_move, fantasma_y]
                 if value == 1:
                     next_y_move = (fantasma_y+1)*direccion_y
-                    if next_y_move >= min_y and next_y_move < max_y:
+                    if next_y_move >= min_y and next_y_move <= max_y:
                         value = obs[i, next_y_move]
 
                 caminos.append(value)
@@ -83,11 +86,11 @@ class MaxNAgent(Agent):
         if not 6 in caminos:
             for j in range(min_y, max_y):
                 next_y_move = (j+1) * direccion_y
-                if next_y_move >=min_y and next_y_move < max_y:
+                if next_y_move >=min_y and next_y_move <= max_y:
                     value = obs[fantasma_x, next_y_move]
                     if value == 1:
                         next_x_move = (fantasma_x+1)*direccion_x
-                        if next_x_move >=min_x and next_x_move < max_x:
+                        if next_x_move >=min_x and next_x_move <= max_x:
                             value = value = obs[next_x_move, j]
 
                     caminos.append(value)
@@ -96,10 +99,11 @@ class MaxNAgent(Agent):
         
         rewards = np.zeros(gameState.getNumAgents())
         rewards[agentIndex] = reward
+        print(f"rewards ={rewards}")
         return rewards # vector de recompensas por agente
 
 
-    # auxiliar
+    # TODO: Ver si se necesita 
     def estimate(self, agent_value, cell_value):
         value = cell_value
         value =  -value if value == 1 else value
@@ -123,7 +127,7 @@ class MaxNAgent(Agent):
             j=0
             while (not encontre) and (j < processed_obs.shape[1]):
                 obs_value = processed_obs[i][j]
-                print(obs_value, values)
+                #print(obs_value, values)
                 if (obs_value in values):
                     encontre = True
                     px = i
@@ -148,31 +152,26 @@ class MaxNAgent(Agent):
         
         # Casos base:
         if depth == 0:
-            result = self.evaluationFunction(gameState, agentIndex)
-            print(result)
-            return result
+            if self.unroll_type == "MC":
+                return None, self.montecarlo_eval(gameState, agentIndex)
+            else:
+                return None, self.montecarlo_tree_search_eval(gameState, agentIndex)
         elif gameState.isEnd():
-            result = gameState._get_agent_reward(agentIndex)
-            print(f"end {result}")
-            return result
+            return None, gameState.get_rewards()
 
         # Llamada recursiva
         legalActions = gameState.getLegalActions(agentIndex)
         random.shuffle(legalActions)
-        nextAgent = self.getNextAgentIndex(agentIndex, gameState)
-        
-        ## self.maxN(gameState, nextAgent, depth-1)
+        nextAgent = self.getNextAgentIndex(agentIndex, gameState) 
         nextStatesValues = []
-        print(f"legal actions = {legalActions}")
         for action in legalActions:
-            
             state = gameState.deepCopy()
-    
             nextState = state.generateSuccessor(agentIndex, action)            
-            #print(f"maxN player {agentIndex} action {action}, nextPlayer:{nextAgent}")
 
+            # De la llamada recursiva solo interesa los scores y no la accion
+            _, scores = self.maxN(gameState, nextAgent, depth-1)
             state_values = self.montecarlo_eval(nextState, nextAgent)
-            nextStatesValues.append([action, state_values[agentIndex]])
+            nextStatesValues.append([action, state_values])
 
         # print(f"values ={nextStatesValues}")
         max_index, max_value = max(enumerate(nextStatesValues), key=lambda p: p[0])
@@ -208,9 +207,6 @@ class MaxNAgent(Agent):
         """
         state = gameState
         V = np.zeros(state.getNumAgents())
-        # generar un episodio random
-        # computar su valor
-        print("------------------------------------------------------")
         unroll_number = self.max_unroll_depth
         player = agentIndex
         while (not state.isEnd()) & (unroll_number > 0):
@@ -218,19 +214,15 @@ class MaxNAgent(Agent):
 
             actions = state.getLegalActions(player)
             random_action = random.choice(actions)
-            #print(f"Agent: {player} action: {random_action}")
             state = state.generateSuccessor(player, random_action)
 
             if state.isEnd():
-                print(f"is end")
                 V = state.get_rewards()
             elif unroll_number <= 0:
                 unroll_value = self.evaluationFunction(state, player)
-                print(f"unroll value")
                 V = unroll_value
             
             player = self.getNextAgentIndex(player, state)
-        # print(f"unroll v= {V}")
         return V
 
 

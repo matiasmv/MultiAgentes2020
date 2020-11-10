@@ -45,7 +45,6 @@ def run_one_layout(layout = "mediumGrid"):
         print(view)
 
         action = agents[turn_index].getAction(game_state)
-        print(f'action = {action}')
         game_state, rewards, done, info = env.step(action, turn_index)        
         turn_index = (turn_index + 1) % env._get_num_agents()
 
