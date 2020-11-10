@@ -169,9 +169,9 @@ class MaxNAgent(Agent):
             nextState = state.generateSuccessor(agentIndex, action)            
 
             # De la llamada recursiva solo interesa los scores y no la accion
-            _, scores = self.maxN(gameState, nextAgent, depth-1)
-            state_values = self.montecarlo_eval(nextState, nextAgent)
-            nextStatesValues.append([action, state_values])
+            _, scores = self.maxN(nextState, nextAgent, depth-1)
+            
+            nextStatesValues.append([action, scores])
 
         # print(f"values ={nextStatesValues}")
         max_index, max_value = max(enumerate(nextStatesValues), key=lambda p: p[0])
