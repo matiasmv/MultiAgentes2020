@@ -72,18 +72,18 @@ def process_state_ghost(game_state, view_distance, agentIndex):
             
             obs[obs.shape[0]-1, obs.shape[1]-1] = 2 if np.any(
                 food[agent_pos[0]:map_shape[0], agent_pos[1]:map_shape[0]]) else 0
-        else:
-
-            obs[0, 0] = 6 if (pacman_pos[0] <= agent_pos[0]+1) and (pacman_pos[1] <= agent_pos[1]+1) else 0
+        elif not 6 in obs:
+            px, py = pacman_pos
+            ax, ay = agent_pos
+            print(px, py, ax, ay, pacman_pos[0], agent_pos[0], pacman_pos[1], agent_pos[1])
             
-            obs[obs.shape[0]-1,
-                0] = 6 if (pacman_pos[0] <= agent_pos[0]+1) and (pacman_pos[1] >= agent_pos[1]+1) else 0
-                
-               
-            obs[0, obs.shape[1] -
-                1] = 6 if (pacman_pos[0] >= agent_pos[0]+1) and (pacman_pos[1] <= agent_pos[1]+1) else 0
+            obs[0, 0] = 6 if (px < ax ) and (py < ay) else 0
             
-            obs[obs.shape[0]-1, obs.shape[1]-1] = 6 if (pacman_pos[0] >= agent_pos[0]+1) and (pacman_pos[1] >= agent_pos[1]+1) else 0
+            obs[obs.shape[0]-1, 0] = 6 if (px > ax) and (py < ay) else 0
+                   
+            obs[0, obs.shape[1] - 1] = 6 if (px < ax) and (py > ay) else 0
+            
+            obs[obs.shape[0]-1, obs.shape[1]-1] = 6 if (px > ax) and (py > ay) else 0
 
         # print()
         obs = np.transpose(obs)[::-1, :]

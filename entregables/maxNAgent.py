@@ -50,7 +50,7 @@ class MaxNAgent(Agent):
         processed_obs = game_util.process_state_ghost(
             gameState, self.view_distance, agentIndex)
 
-        print("obs")
+        print(f"Agent {agentIndex} => evaluation function obs")
         print(processed_obs)
         # TODO: Implementar función de evaluación que utilice "processed_obs"
         rewards = []
@@ -71,50 +71,40 @@ class MaxNAgent(Agent):
         # prueba de camino al pacman 
         # print(min_x, max_x)
         # print(min_y, max_y)
-        for i in range(min_x, max_x):
-            next_x_move = (i+1) * direccion_x
-            if next_x_move >=min_x and next_x_move <= max_x:
+        for i in range(fantasma_x, pacman_x):
+            next_x_move = (i+1) #* direccion_x
+            if next_x_move >= min_x and next_x_move <= max_x:
                 value = obs[next_x_move, fantasma_y]
-                if value == 1:
-                    next_y_move = (fantasma_y+1)*direccion_y
+                if value == 1: # muro
+                    next_y_move = (fantasma_y+1) * direccion_y
                     if next_y_move >= min_y and next_y_move <= max_y:
                         value = obs[i, next_y_move]
 
                 caminos.append(value)
             
-               
+        print(f"Agent {agentIndex} => caminos ={caminos}") 
+
         if not 6 in caminos:
-            for j in range(min_y, max_y):
-                next_y_move = (j+1) * direccion_y
+            for j in range(fantasma_y, pacman_y): #min_y, max_y):
+                print(f"Agent {agentIndex} => j = {j}")
+                next_y_move = (j+1) #* direccion_y
                 if next_y_move >=min_y and next_y_move <= max_y:
                     value = obs[fantasma_x, next_y_move]
                     if value == 1:
-                        next_x_move = (fantasma_x+1)*direccion_x
+                        next_x_move = (fantasma_x+1) * direccion_x
                         if next_x_move >=min_x and next_x_move <= max_x:
-                            value = value = obs[next_x_move, j]
+                            value = obs[next_x_move, j]
 
                     caminos.append(value)
         
-        reward = 50 if 6 in caminos else 0
+        print(f"Agent {agentIndex} => caminos2 = {caminos}") 
+        reward = 0 if 6 in caminos else -1
         
-        rewards = np.zeros(gameState.getNumAgents())
-        rewards[agentIndex] = reward
-        print(f"rewards ={rewards}")
+        rewards = gameState.get_rewards()
+        rewards[agentIndex] = rewards[agentIndex] + reward
+        print(f"Agent {agentIndex} => rewards ={rewards}")
         return rewards # vector de recompensas por agente
 
-
-    # TODO: Ver si se necesita 
-    def estimate(self, agent_value, cell_value):
-        value = cell_value
-        value =  -value if value == 1 else value
-
-        if (value == 6) & (agent_value == 7):
-            value = 50
-        if (value == 6) & (agent_value == 8):
-            value = -50
-
-        return value
-    
     # auxiliar
     def find_procesed_obs_values(self, processed_obs, values):
         px = -1
@@ -145,11 +135,11 @@ class MaxNAgent(Agent):
 
     def getNextAgentIndex(self, agentIndex, gameState):  # TODO: Implementar función
         nextIndex = ((agentIndex+1) % gameState.getNumAgents())
+        # print(f"Agent {agentIndex} => nextAgent{nextIndex}")
         return nextIndex
 
     def maxN(self, gameState: GameStateExtended, agentIndex, depth):
-        #TODO: Implementar
-        
+        print(f"Agent {agentIndex} => maxN depth={depth}")
         # Casos base:
         if depth == 0:
             if self.unroll_type == "MC":
@@ -173,17 +163,17 @@ class MaxNAgent(Agent):
             
             nextStatesValues.append([action, scores])
 
-        # print(f"values ={nextStatesValues}")
-        max_index, max_value = max(enumerate(nextStatesValues), key=lambda p: p[0])
-        # print(f"r = {max_value}, {max_index}")
+        #print(f"agentIndex={agentIndex} values ={nextStatesValues}")
+        select_function = self.get_function_agent_value_from_pair_action_vector(agentIndex)
+        max_index, max_value = max(enumerate(nextStatesValues), key=select_function )
+        #print(f"r = {max_value}, {max_index}")
         best_action = max_value[0] 
         best_score_array = max_value[1]
         # best_score_array = np.zeros(gameState.getNumAgents())
-
+        print(f"Agent {agentIndex} => maxN Best Action={best_action} Best Score Array = {best_score_array}")
         return best_action, best_score_array
 
     def montecarlo_eval(self, gameState, agentIndex):
-        # TODO: Implementar función
         # Pista: usar random_unroll
 
         suma = np.zeros(gameState.getNumAgents())
@@ -198,20 +188,32 @@ class MaxNAgent(Agent):
         for j in range(len(suma)):
             suma[j] = suma[j] / self.number_of_unrolls 
 
+        print(f"Agent {agentIndex} => montecarlo eval {suma}")
         return suma
+
+    def get_function_agent_value_from_pair_action_vector(self, agentIndex):
+        def select(pair):
+            #print(f"agentIndex={agentIndex} pair={pair}")
+            
+            #pair[1][0] es el vector de valores de estados
+            return pair[1][0][agentIndex]
+        return select   
 
     def random_unroll(self, gameState: GameStateExtended, agentIndex):
         """
             Parámetros: estado del juego y número de agente
             Retorna: valor del estado luego de realizar un unroll aleatorio
         """
+        print(f'Agent {agentIndex} => Unroll Start')
         state = gameState
         V = np.zeros(state.getNumAgents())
         unroll_number = self.max_unroll_depth
         player = agentIndex
         while (not state.isEnd()) & (unroll_number > 0):
             unroll_number -= 1
+            player = self.getNextAgentIndex(player, state)
 
+            print(f'Agent {player} => Unroll step {unroll_number}')
             actions = state.getLegalActions(player)
             random_action = random.choice(actions)
             state = state.generateSuccessor(player, random_action)
@@ -219,10 +221,13 @@ class MaxNAgent(Agent):
             if state.isEnd():
                 V = state.get_rewards()
             elif unroll_number <= 0:
-                unroll_value = self.evaluationFunction(state, player)
-                V = unroll_value
+                # duda player o agent index?
+                V = self.evaluationFunction(state, player)
+                print(f"Agent {player} => unroll value = {V}")
+               
             
-            player = self.getNextAgentIndex(player, state)
+            
+        print(f"Agent {agentIndex} => end unroll")
         return V
 
 
