@@ -16,7 +16,6 @@ class MaxNAgent(Agent):
         self.number_of_unrolls = number_of_unrolls # cantidad de unrolls por estado a evaluar 
         self.view_distance = view_distance # distancia máxima de visión para la función heurística.
 
-    
     def evaluationFunction(self, gameState: GameStateExtended, agentIndex):
         """[summary]
             Processed_obs 
@@ -133,7 +132,7 @@ class MaxNAgent(Agent):
         action, value = self.maxN(gameState, self.index, self.max_depth)
         return action
 
-    def getNextAgentIndex(self, agentIndex, gameState):  # TODO: Implementar función
+    def getNextAgentIndex(self, agentIndex, gameState):
         nextIndex = ((agentIndex+1) % gameState.getNumAgents())
         # print(f"Agent {agentIndex} => nextAgent{nextIndex}")
         return nextIndex
@@ -164,13 +163,6 @@ class MaxNAgent(Agent):
             nextStatesValues.append([action, scores])
 
         #print(f"agentIndex={agentIndex} values ={nextStatesValues}")
-        #select_function = self.get_function_agent_value_from_pair_action_vector(agentIndex)
-        #max_index, max_value = max(enumerate(nextStatesValues), key=select_function )
-        #print(f"r = {max_value}, {max_index}")
-        #best_action = max_value[0] 
-        #best_score_array = max_value[1]
-        # best_score_array = np.zeros(gameState.getNumAgents())
-
         best_action, best_score_array = self.get_best_action_score(agentIndex, nextStatesValues)
         print(f"Agent {agentIndex} => maxN Best Action={best_action} Best Score Array = {best_score_array}")
         return best_action, best_score_array
@@ -184,10 +176,8 @@ class MaxNAgent(Agent):
                 aux_index = i
         return values[aux_index][0], values[aux_index][1]
 
-
     def montecarlo_eval(self, gameState, agentIndex):
         # Pista: usar random_unroll
-
         suma = np.zeros(gameState.getNumAgents())
         for i in range(self.number_of_unrolls):
             #print(f"numero de unroll {i}")
@@ -201,15 +191,7 @@ class MaxNAgent(Agent):
             suma[j] = suma[j] / self.number_of_unrolls 
 
         print(f"Agent {agentIndex} => montecarlo eval {suma}")
-        return suma
-
-    def get_function_agent_value_from_pair_action_vector(self, agentIndex):
-        def select(pair):
-            #print(f"agentIndex={agentIndex} pair={pair}")
-            
-            #pair[1][0] es el vector de valores de estados
-            return pair[1][0][agentIndex]
-        return select   
+        return suma 
 
     def random_unroll(self, gameState: GameStateExtended, agentIndex):
         """
@@ -236,12 +218,9 @@ class MaxNAgent(Agent):
                 # duda player o agent index?
                 V = self.evaluationFunction(state, player)
                 print(f"Agent {player} => unroll value = {V}")
-               
-            
-            
+
         print(f"Agent {agentIndex} => end unroll")
         return V
-
 
     def montecarlo_tree_search_eval(self, gameState, agentIndex):
         # TODO: Implementar función
