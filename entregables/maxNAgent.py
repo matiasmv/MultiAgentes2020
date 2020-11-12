@@ -164,14 +164,26 @@ class MaxNAgent(Agent):
             nextStatesValues.append([action, scores])
 
         #print(f"agentIndex={agentIndex} values ={nextStatesValues}")
-        select_function = self.get_function_agent_value_from_pair_action_vector(agentIndex)
-        max_index, max_value = max(enumerate(nextStatesValues), key=select_function )
+        #select_function = self.get_function_agent_value_from_pair_action_vector(agentIndex)
+        #max_index, max_value = max(enumerate(nextStatesValues), key=select_function )
         #print(f"r = {max_value}, {max_index}")
-        best_action = max_value[0] 
-        best_score_array = max_value[1]
+        #best_action = max_value[0] 
+        #best_score_array = max_value[1]
         # best_score_array = np.zeros(gameState.getNumAgents())
+
+        best_action, best_score_array = self.get_best_action_score(agentIndex, nextStatesValues)
         print(f"Agent {agentIndex} => maxN Best Action={best_action} Best Score Array = {best_score_array}")
         return best_action, best_score_array
+    
+    def get_best_action_score(self, agent, values):
+        aux_val = float('-inf')
+        aux_index = 0
+        for i in range(len(values)):
+            if (values[i][1][agent] > aux_val):
+                aux_val = values[i][1][agent]
+                aux_index = i
+        return values[aux_index][0], values[aux_index][1]
+
 
     def montecarlo_eval(self, gameState, agentIndex):
         # Pista: usar random_unroll
