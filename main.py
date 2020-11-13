@@ -52,4 +52,4 @@ def run_one_layout(layout = "mediumGrid"):
             else "Pacman Lose,", "Scores:", game_state.get_rewards())
 
 if __name__ == '__main__':
-    run_one_layout("contestClassic")
+    run_one_layout("smallClassic")

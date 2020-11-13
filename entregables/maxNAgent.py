@@ -1,5 +1,6 @@
 import random
 from entregables import game_util 
+from game_logic.mcts_util import ucb
 from game_logic.game import Agent
 from game_logic.gameExtended import GameStateExtended
 import numpy as np
@@ -16,7 +17,7 @@ class MaxNAgent(Agent):
         self.number_of_unrolls = number_of_unrolls # cantidad de unrolls por estado a evaluar 
         self.view_distance = view_distance # distancia máxima de visión para la función heurística.
 
-    def evaluationFunction(self, gameState: GameStateExtended, agentIndex):
+    def evaluation_function(self, gameState: GameStateExtended, agentIndex):
         """[summary]
             Processed_obs 
             Parámetros: estado del juego, distancia máxima de visión (tupla), indice del agente
@@ -49,8 +50,8 @@ class MaxNAgent(Agent):
         processed_obs = game_util.process_state_ghost(
             gameState, self.view_distance, agentIndex)
 
-        print(f"Agent {agentIndex} => evaluation function obs")
-        print(processed_obs)
+        #print(f"Agent {agentIndex} => evaluation function obs")
+        #print(processed_obs)
         # TODO: Implementar función de evaluación que utilice "processed_obs"
         rewards = []
         fantasma_x, fantasma_y, fantamsa_v = self.find_procesed_obs_values(processed_obs, [7,8])
@@ -81,11 +82,11 @@ class MaxNAgent(Agent):
 
                 caminos.append(value)
             
-        print(f"Agent {agentIndex} => caminos ={caminos}") 
+        #print(f"Agent {agentIndex} => caminos ={caminos}") 
 
         if not 6 in caminos:
             for j in range(fantasma_y, pacman_y): #min_y, max_y):
-                print(f"Agent {agentIndex} => j = {j}")
+                #print(f"Agent {agentIndex} => j = {j}")
                 next_y_move = (j+1) #* direccion_y
                 if next_y_move >=min_y and next_y_move <= max_y:
                     value = obs[fantasma_x, next_y_move]
@@ -96,12 +97,12 @@ class MaxNAgent(Agent):
 
                     caminos.append(value)
         
-        print(f"Agent {agentIndex} => caminos2 = {caminos}") 
+        #print(f"Agent {agentIndex} => caminos2 = {caminos}") 
         reward = 0 if 6 in caminos else -1
         
         rewards = gameState.get_rewards()
         rewards[agentIndex] = rewards[agentIndex] + reward
-        print(f"Agent {agentIndex} => rewards ={rewards}")
+        print(f"Agent {agentIndex} => rewards ={rewards} (eval function)")
         return rewards # vector de recompensas por agente
 
     # auxiliar
@@ -129,16 +130,16 @@ class MaxNAgent(Agent):
         return px, py, pv
 
     def getAction(self, gameState):
-        action, value = self.maxN(gameState, self.index, self.max_depth)
+        action, value = self.max_n(gameState, self.index, self.max_depth)
         return action
 
-    def getNextAgentIndex(self, agentIndex, gameState):
+    def get_next_agent_index(self, agentIndex, gameState):
         nextIndex = ((agentIndex+1) % gameState.getNumAgents())
         # print(f"Agent {agentIndex} => nextAgent{nextIndex}")
         return nextIndex
 
-    def maxN(self, gameState: GameStateExtended, agentIndex, depth):
-        print(f"Agent {agentIndex} => maxN depth={depth}")
+    def max_n(self, gameState: GameStateExtended, agentIndex, depth):
+        #print(f"Agent {agentIndex} => maxN depth={depth}")
         # Casos base:
         if depth == 0:
             if self.unroll_type == "MC":
@@ -151,18 +152,18 @@ class MaxNAgent(Agent):
         # Llamada recursiva
         legalActions = gameState.getLegalActions(agentIndex)
         random.shuffle(legalActions)
-        nextAgent = self.getNextAgentIndex(agentIndex, gameState) 
+        nextAgent = self.get_next_agent_index(agentIndex, gameState) 
         nextStatesValues = []
         for action in legalActions:
             state = gameState.deepCopy()
             nextState = state.generateSuccessor(agentIndex, action)            
 
             # De la llamada recursiva solo interesa los scores y no la accion
-            _, scores = self.maxN(nextState, nextAgent, depth-1)
+            _, scores = self.max_n(nextState, nextAgent, depth-1)
             
             nextStatesValues.append([action, scores])
 
-        #print(f"agentIndex={agentIndex} values ={nextStatesValues}")
+        print(f"agentIndex={agentIndex} values ={nextStatesValues}")
         best_action, best_score_array = self.get_best_action_score(agentIndex, nextStatesValues)
         print(f"Agent {agentIndex} => maxN Best Action={best_action} Best Score Array = {best_score_array}")
         return best_action, best_score_array
@@ -183,7 +184,7 @@ class MaxNAgent(Agent):
             #print(f"numero de unroll {i}")
             unroll_array = self.random_unroll(gameState, agentIndex)
             
-            #print(f"unroll_array {unroll_array}")
+            print(f"unroll_array {unroll_array}")
             for j in range(len(unroll_array)):
                 suma[j] += unroll_array[j]
         
@@ -205,9 +206,9 @@ class MaxNAgent(Agent):
         player = agentIndex
         while (not state.isEnd()) & (unroll_number > 0):
             unroll_number -= 1
-            player = self.getNextAgentIndex(player, state)
+            player = self.get_next_agent_index(player, state)
 
-            print(f'Agent {player} => Unroll step {unroll_number}')
+            #print(f'Agent {player} => Unroll step {unroll_number}')
             actions = state.getLegalActions(player)
             random_action = random.choice(actions)
             state = state.generateSuccessor(player, random_action)
@@ -216,7 +217,7 @@ class MaxNAgent(Agent):
                 V = state.get_rewards()
             elif unroll_number <= 0:
                 # duda player o agent index?
-                V = self.evaluationFunction(state, player)
+                V = self.evaluation_function(state, player)
                 print(f"Agent {player} => unroll value = {V}")
 
         print(f"Agent {agentIndex} => end unroll")
@@ -227,14 +228,25 @@ class MaxNAgent(Agent):
         # PISTA: Utilizar selection_stage, expansion_stage, random_unroll y back_prop_stage
         root = mcts_util.MCTSNode(
             parent=None, action=None, player=agentIndex, numberOfAgents=gameState.getNumAgents())
-        state = gameState.deepCopy()
         for _ in range(self.number_of_unrolls):
+            node = root
+            state = gameState.deepCopy()
+            node, state = selection_stage(node, gameState)
+            # TODO: agregar expansion_stage, random_unroll y back_prop_stage
             pass
 
         return np.zeros(gameState.getNumAgents())
 
     def selection_stage(self, node, gameState):
-        # TODO: Implementar función
+        while node.children:
+            if(node.explored_children < len(node.children)):
+                child_to_visit = node.children[node.explored_children]
+                node.explored_children +=1
+                node = child_to_visit
+            else:
+                node = max(node.children, key = ucb)
+                
+            gameState = state.generateSuccessor(node.player, node.action)
         return node, gameState
 
     def expansion_stage(self, node, gameState):
