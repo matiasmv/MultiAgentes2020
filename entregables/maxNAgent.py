@@ -46,61 +46,29 @@ class MaxNAgent(Agent):
         Returns:
             [array]: [rewards de los agentes]
         """
-        processed_obs = game_util.process_state_ghost(
+        processed_obs = game_util.process_state(
             gameState, self.view_distance, agentIndex)
 
         print(f"Agent {agentIndex} => evaluation function obs")
         print(processed_obs)
         # TODO: Implementar función de evaluación que utilice "processed_obs"
-        rewards = []
         fantasma_x, fantasma_y, fantamsa_v = self.find_procesed_obs_values(processed_obs, [7,8])
         pacman_x, pacman_y, _ = self.find_procesed_obs_values(processed_obs, [6])
-        
-        caminos = []
-
-        max_x = max(pacman_x, fantasma_x)
-        max_y = max(pacman_y, fantasma_y)
-        min_x = min(pacman_x, fantasma_x)
-        min_y = min(pacman_y, fantasma_y)
-
-        direccion_x = 1 if pacman_x - fantasma_x > 0 else -1
-        direccion_y = 1 if pacman_y - fantasma_y > 0 else -1
 
         obs = processed_obs
-        # prueba de camino al pacman 
-        # print(min_x, max_x)
-        # print(min_y, max_y)
-        for i in range(fantasma_x, pacman_x):
-            next_x_move = (i+1) #* direccion_x
-            if next_x_move >= min_x and next_x_move <= max_x:
-                value = obs[next_x_move, fantasma_y]
-                if value == 1: # muro
-                    next_y_move = (fantasma_y+1) * direccion_y
-                    if next_y_move >= min_y and next_y_move <= max_y:
-                        value = obs[i, next_y_move]
-
-                caminos.append(value)
-            
-        print(f"Agent {agentIndex} => caminos ={caminos}") 
-
-        if not 6 in caminos:
-            for j in range(fantasma_y, pacman_y): #min_y, max_y):
-                print(f"Agent {agentIndex} => j = {j}")
-                next_y_move = (j+1) #* direccion_y
-                if next_y_move >=min_y and next_y_move <= max_y:
-                    value = obs[fantasma_x, next_y_move]
-                    if value == 1:
-                        next_x_move = (fantasma_x+1) * direccion_x
-                        if next_x_move >=min_x and next_x_move <= max_x:
-                            value = obs[next_x_move, j]
-
-                    caminos.append(value)
         
-        print(f"Agent {agentIndex} => caminos2 = {caminos}") 
-        reward = 0 if 6 in caminos else -1
+        x = abs(fantasma_x - pacman_x) 
+        y = abs(fantasma_y - pacman_y)
+
+        x= 1/x if x>0 else 1
+        y= 1/y if y>0 else 1
         
-        rewards = gameState.get_rewards()
-        rewards[agentIndex] = rewards[agentIndex] + reward
+        x= 0 if x<0.8 else 1
+        y= 0 if y<0.8 else 1
+
+
+        rewards = np.zeros(gameState.getNumAgents())
+        rewards[agentIndex] =  (x+y)
         print(f"Agent {agentIndex} => rewards ={rewards}")
         return rewards # vector de recompensas por agente
 
@@ -156,10 +124,8 @@ class MaxNAgent(Agent):
         for action in legalActions:
             state = gameState.deepCopy()
             nextState = state.generateSuccessor(agentIndex, action)            
-
             # De la llamada recursiva solo interesa los scores y no la accion
             _, scores = self.maxN(nextState, nextAgent, depth-1)
-            
             nextStatesValues.append([action, scores])
 
         #print(f"agentIndex={agentIndex} values ={nextStatesValues}")
@@ -178,27 +144,27 @@ class MaxNAgent(Agent):
 
     def montecarlo_eval(self, gameState, agentIndex):
         # Pista: usar random_unroll
-        suma = np.zeros(gameState.getNumAgents())
+        rewards = np.zeros(gameState.getNumAgents())
         for i in range(self.number_of_unrolls):
-            #print(f"numero de unroll {i}")
-            unroll_array = self.random_unroll(gameState, agentIndex)
-            
-            #print(f"unroll_array {unroll_array}")
+            #print(f"agentIndex={agentIndex} => numero de unroll {i}")
+            unroll_array = self.random_unroll(gameState.deepCopy(), agentIndex)
+            #print(f"agentIndex={agentIndex} => unroll_array {unroll_array}")
             for j in range(len(unroll_array)):
-                suma[j] += unroll_array[j]
+                rewards[j] += unroll_array[j]
         
-        for j in range(len(suma)):
-            suma[j] = suma[j] / self.number_of_unrolls 
+        print(f"Agent {agentIndex} => 1 montecarlo eval {rewards}")
+        for j in range(len(rewards)):
+            rewards[j] = rewards[j] / self.number_of_unrolls 
 
-        print(f"Agent {agentIndex} => montecarlo eval {suma}")
-        return suma 
+        print(f"Agent {agentIndex} => montecarlo eval {rewards}")
+        return rewards 
 
     def random_unroll(self, gameState: GameStateExtended, agentIndex):
         """
             Parámetros: estado del juego y número de agente
             Retorna: valor del estado luego de realizar un unroll aleatorio
         """
-        print(f'Agent {agentIndex} => Unroll Start')
+        #print(f'Agent {agentIndex} => Unroll Start')
         state = gameState
         V = np.zeros(state.getNumAgents())
         unroll_number = self.max_unroll_depth
@@ -207,7 +173,7 @@ class MaxNAgent(Agent):
             unroll_number -= 1
             player = self.getNextAgentIndex(player, state)
 
-            print(f'Agent {player} => Unroll step {unroll_number}')
+            #print(f'Agent {player} => Unroll step {unroll_number}')
             actions = state.getLegalActions(player)
             random_action = random.choice(actions)
             state = state.generateSuccessor(player, random_action)
@@ -217,9 +183,9 @@ class MaxNAgent(Agent):
             elif unroll_number <= 0:
                 # duda player o agent index?
                 V = self.evaluationFunction(state, player)
-                print(f"Agent {player} => unroll value = {V}")
+                #print(f"Agent {player} => unroll value = {V}")
 
-        print(f"Agent {agentIndex} => end unroll")
+        print(f"Agent {agentIndex} => end unroll V={V}")
         return V
 
     def montecarlo_tree_search_eval(self, gameState, agentIndex):
