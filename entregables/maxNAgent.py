@@ -231,8 +231,9 @@ class MaxNAgent(Agent):
         for _ in range(self.number_of_unrolls):
             node = root
             state = gameState.deepCopy()
-            node, state = selection_stage(node, gameState)
-            # TODO: agregar expansion_stage, random_unroll y back_prop_stage
+            node, state = selection_stage(node, state)
+            node, state = expansion_stage(node, state)
+            # TODO: agregar random_unroll y back_prop_stage
             pass
 
         return np.zeros(gameState.getNumAgents())
@@ -250,7 +251,16 @@ class MaxNAgent(Agent):
         return node, gameState
 
     def expansion_stage(self, node, gameState):
-        # TODO: Implementar función
+        if not gameState.isEnd():
+            node.children = [
+                mcts_util.MCTSNode(
+                    parent=node,
+                    action=action,
+                    player=node.player,
+                    numberOfAgents=gameState.getNumAgents()
+                ) for action in gameState.getLegalActions(node.player)
+            ]
+            random.shuffle(node.children)
         return node, gameState
 
     def back_prop_stage(self, node, value):
