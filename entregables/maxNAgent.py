@@ -98,10 +98,11 @@ class MaxNAgent(Agent):
                     caminos.append(value)
         
         #print(f"Agent {agentIndex} => caminos2 = {caminos}") 
-        reward = 0 if 6 in caminos else -1
+        reward = 2000 if 6 in caminos else -2000
         
         rewards = gameState.get_rewards()
-        rewards[agentIndex] = rewards[agentIndex] + reward
+        rewards[1] = rewards[1] + reward
+        rewards[0] = rewards[0] - reward
         print(f"Agent {agentIndex} => rewards ={rewards} (eval function)")
         return rewards # vector de recompensas por agente
 
