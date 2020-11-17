@@ -206,8 +206,7 @@ class MaxNAgent(Agent):
         player = agentIndex
         while (not state.isEnd()) & (unroll_number > 0):
             unroll_number -= 1
-            player = self.get_next_agent_index(player, state)
-
+            
             #print(f'Agent {player} => Unroll step {unroll_number}')
             actions = state.getLegalActions(player)
             random_action = random.choice(actions)
@@ -220,23 +219,24 @@ class MaxNAgent(Agent):
                 V = self.evaluation_function(state, player)
                 print(f"Agent {player} => unroll value = {V}")
 
+            player = self.get_next_agent_index(player, state)
         print(f"Agent {agentIndex} => end unroll")
         return V
 
     def montecarlo_tree_search_eval(self, gameState, agentIndex):
-        # TODO: Implementar función
-        # PISTA: Utilizar selection_stage, expansion_stage, random_unroll y back_prop_stage
+       
         root = mcts_util.MCTSNode(
             parent=None, action=None, player=agentIndex, numberOfAgents=gameState.getNumAgents())
+        
         for _ in range(self.number_of_unrolls):
             node = root
             state = gameState.deepCopy()
-            node, state = selection_stage(node, state)
-            node, state = expansion_stage(node, state)
-            # TODO: agregar random_unroll y back_prop_stage
-            pass
+            node, state = self.selection_stage(node, state)
+            node, state = self.expansion_stage(node, state)
+            values = self.random_unroll(state, node.player)
+            self.back_prop_stage(node, values)
 
-        return np.zeros(gameState.getNumAgents())
+        return root.value
 
     def selection_stage(self, node, gameState):
         while node.children:
@@ -247,7 +247,7 @@ class MaxNAgent(Agent):
             else:
                 node = max(node.children, key = ucb)
                 
-            gameState = state.generateSuccessor(node.player, node.action)
+            gameState = gameState.generateSuccessor(node.parent.player, node.action)
         return node, gameState
 
     def expansion_stage(self, node, gameState):
@@ -256,13 +256,16 @@ class MaxNAgent(Agent):
                 mcts_util.MCTSNode(
                     parent=node,
                     action=action,
-                    player=node.player,
+                    player=self.get_next_agent_index(node.player, gameState),
                     numberOfAgents=gameState.getNumAgents()
-                ) for action in gameState.getLegalActions(node.player)
+                ) for action in gameState.getLegalActions(node.player) 
             ]
             random.shuffle(node.children)
         return node, gameState
 
     def back_prop_stage(self, node, value):
-        # TODO: Implementar función
-        pass
+        while node:
+            node.visits += 1
+            node.value = node.value + value
+            node = node.parent
+
