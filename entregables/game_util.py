@@ -75,7 +75,6 @@ def process_state_ghost(game_state, view_distance, agentIndex):
         elif not 6 in obs:
             px, py = pacman_pos
             ax, ay = agent_pos
-            print(px, py, ax, ay, pacman_pos[0], agent_pos[0], pacman_pos[1], agent_pos[1])
             
             obs[0, 0] = 6 if (px < ax ) and (py < ay) else 0
             

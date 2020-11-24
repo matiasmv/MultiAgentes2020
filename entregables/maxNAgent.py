@@ -10,7 +10,17 @@ import math
 class MaxNAgent(Agent):
     def __init__(self, index, max_depth=2, unroll_type="MC", max_unroll_depth=5, number_of_unrolls=10, view_distance=(2, 2)):
         super().__init__(index)
+        
+        self.EMPTY = 0
+        self.WALL = 1
+        self.FOOD = 2
+        self.CAPSULE = 3
+        self.GHOST = 4
+        self.GHOST_SCARED = 5
+        self.PACMAN = 6
 
+        self.PLAYING_GHOST = 7
+        self.PLAYING_GHOST_SCARED = 8 
         self.max_depth = max_depth # profundidad máxima de maxN
         self.unroll_type = unroll_type # tipo de unrolling a realizar (“MC” - Monte Carlo o “MCTS” - Monte Carlo Tree Search)
         self.max_unroll_depth = max_unroll_depth # largo máximo de unrolling
@@ -18,93 +28,48 @@ class MaxNAgent(Agent):
         self.view_distance = view_distance # distancia máxima de visión para la función heurística.
 
     def evaluation_function(self, gameState: GameStateExtended, agentIndex):
-        """[summary]
-            Processed_obs 
-            Parámetros: estado del juego, distancia máxima de visión (tupla), indice del agente
-            qué está jugando
-            ● Retorna: Una matriz de numpy con las siguientes características:
-            ○ Shape: (view_distance[0]*2+1, view_distance[1]*2+1) (salvo que área fuera
-            de juego sea visible)
-            ■ Ej: view_distance: (2,2), shape: (5,5)
-            ○ Contienen los elementos que se encuentran rodeando al agente, con éste en
-            el centro (en la posición (view_distance[0], view_distance[1])
-            ○ Cada elemento está simbolizado por un número:
-                ■ 0: empty
-                ■ 1: wall
-                ■ 2: food
-                ■ 3: capsule
-                ■ 4: ghost
-                ■ 5: scared ghost
-                ■ 6: Pac-Man
-                ■ 7: playing ghost
-                ■ 8: playing scared ghost
-            ○ Si el agente se encuentra el un borde del mapa, y área fuera de juego queda
-            dentro del view_distance, esta área es omitida, generando una observación
-            con una shape modificada.
-        Args:
-            gameState (GameStateExtended): [estado del juego]
-            agentIndex ([int]): [indice del agente]
-        Returns:
-            [array]: [rewards de los agentes]
-        """
-        processed_obs = game_util.process_state_ghost(
-            gameState, self.view_distance, agentIndex)
+        pacman_weigths = [-100, 0, 200, 500, -500, 1000, 0]
+        ghost_weigths = [-100, 0, 200, -100, 0, -200, 10000]
+        scared_ghost_weigths = [100, 0, -200, -500, 100, -200, -2000]
 
-        #print(f"Agent {agentIndex} => evaluation function obs")
-        #print(processed_obs)
-        # TODO: Implementar función de evaluación que utilice "processed_obs"
-        rewards = []
-        fantasma_x, fantasma_y, fantamsa_v = self.find_procesed_obs_values(processed_obs, [7,8])
-        pacman_x, pacman_y, _ = self.find_procesed_obs_values(processed_obs, [6])
+        rewards = np.zeros(gameState.getNumAgents())        
+        for player in range(gameState.getNumAgents()):
+
+            value = 0
+            processed_obs = game_util.process_state(gameState, self.view_distance, player)
+            agent, elements = self.get_view_state(processed_obs, player)
+            # soy pacman o fantasma (asustado o no)
+            # un vector de cantidad de objectos (wall, food)
+            # mult vector de cantidades por el vector de pesos.
+            if agent == self.PACMAN:
+                value = np.dot(elements, pacman_weigths)
+            elif agent == self.PLAYING_GHOST:
+                value = np.dot(elements, ghost_weigths)
+            else:
+                value = np.dot(elements, scared_ghost_weigths)
+
+            # append el valor a un vector de rewards.
+            rewards[player] = value
+
+        return rewards
         
-        caminos = []
+    
+    def get_view_state(self, processed_obs, player):
+        agent = 0
+        if(player == 0):
+            agent = self.PACMAN
+        else: 
+            _, _, agent = self.find_procesed_obs_values(processed_obs, [7,8])
 
-        max_x = max(pacman_x, fantasma_x)
-        max_y = max(pacman_y, fantasma_y)
-        min_x = min(pacman_x, fantasma_x)
-        min_y = min(pacman_y, fantasma_y)
+        elements = np.zeros(7)
 
-        direccion_x = 1 if pacman_x - fantasma_x > 0 else -1
-        direccion_y = 1 if pacman_y - fantasma_y > 0 else -1
+        for i in range(processed_obs.shape[0]):
+            for j in range(processed_obs.shape[1]):
+                element = processed_obs[i][j]
+                if element != self.PLAYING_GHOST and element != self.PLAYING_GHOST_SCARED:
+                    elements[element] += 1
 
-        obs = processed_obs
-        # prueba de camino al pacman 
-        # print(min_x, max_x)
-        # print(min_y, max_y)
-        for i in range(fantasma_x, pacman_x):
-            next_x_move = (i+1) #* direccion_x
-            if next_x_move >= min_x and next_x_move <= max_x:
-                value = obs[next_x_move, fantasma_y]
-                if value == 1: # muro
-                    next_y_move = (fantasma_y+1) * direccion_y
-                    if next_y_move >= min_y and next_y_move <= max_y:
-                        value = obs[i, next_y_move]
-
-                caminos.append(value)
-            
-        #print(f"Agent {agentIndex} => caminos ={caminos}") 
-
-        if not 6 in caminos:
-            for j in range(fantasma_y, pacman_y): #min_y, max_y):
-                #print(f"Agent {agentIndex} => j = {j}")
-                next_y_move = (j+1) #* direccion_y
-                if next_y_move >=min_y and next_y_move <= max_y:
-                    value = obs[fantasma_x, next_y_move]
-                    if value == 1:
-                        next_x_move = (fantasma_x+1) * direccion_x
-                        if next_x_move >=min_x and next_x_move <= max_x:
-                            value = obs[next_x_move, j]
-
-                    caminos.append(value)
-        
-        #print(f"Agent {agentIndex} => caminos2 = {caminos}") 
-        reward = 2000 if 6 in caminos else -2000
-        
-        rewards = gameState.get_rewards()
-        rewards[1] = rewards[1] + reward
-        rewards[0] = rewards[0] - reward
-        print(f"Agent {agentIndex} => rewards ={rewards} (eval function)")
-        return rewards # vector de recompensas por agente
+        return agent, elements
 
     # auxiliar
     def find_procesed_obs_values(self, processed_obs, values):
@@ -164,9 +129,8 @@ class MaxNAgent(Agent):
             
             nextStatesValues.append([action, scores])
 
-        print(f"agentIndex={agentIndex} values ={nextStatesValues}")
         best_action, best_score_array = self.get_best_action_score(agentIndex, nextStatesValues)
-        print(f"Agent {agentIndex} => maxN Best Action={best_action} Best Score Array = {best_score_array}")
+        
         return best_action, best_score_array
     
     def get_best_action_score(self, agent, values):
@@ -182,17 +146,14 @@ class MaxNAgent(Agent):
         # Pista: usar random_unroll
         suma = np.zeros(gameState.getNumAgents())
         for i in range(self.number_of_unrolls):
-            #print(f"numero de unroll {i}")
             unroll_array = self.random_unroll(gameState, agentIndex)
             
-            print(f"unroll_array {unroll_array}")
             for j in range(len(unroll_array)):
                 suma[j] += unroll_array[j]
         
         for j in range(len(suma)):
             suma[j] = suma[j] / self.number_of_unrolls 
 
-        print(f"Agent {agentIndex} => montecarlo eval {suma}")
         return suma 
 
     def random_unroll(self, gameState: GameStateExtended, agentIndex):
@@ -200,7 +161,6 @@ class MaxNAgent(Agent):
             Parámetros: estado del juego y número de agente
             Retorna: valor del estado luego de realizar un unroll aleatorio
         """
-        print(f'Agent {agentIndex} => Unroll Start')
         state = gameState
         V = np.zeros(state.getNumAgents())
         unroll_number = self.max_unroll_depth
@@ -218,10 +178,8 @@ class MaxNAgent(Agent):
             elif unroll_number <= 0:
                 # duda player o agent index?
                 V = self.evaluation_function(state, player)
-                print(f"Agent {player} => unroll value = {V}")
 
             player = self.get_next_agent_index(player, state)
-        print(f"Agent {agentIndex} => end unroll")
         return V
 
     def montecarlo_tree_search_eval(self, gameState, agentIndex):
