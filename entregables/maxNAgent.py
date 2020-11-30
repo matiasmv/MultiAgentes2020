@@ -1,5 +1,5 @@
 import random
-from entregables import game_util 
+from game_logic import game_util
 from game_logic.mcts_util import ucb
 from game_logic.game import Agent
 from game_logic.gameExtended import GameStateExtended
@@ -83,7 +83,6 @@ class MaxNAgent(Agent):
             j=0
             while (not encontre) and (j < processed_obs.shape[1]):
                 obs_value = processed_obs[i][j]
-                #print(obs_value, values)
                 if (obs_value in values):
                     encontre = True
                     px = i
@@ -101,11 +100,9 @@ class MaxNAgent(Agent):
 
     def get_next_agent_index(self, agentIndex, gameState):
         nextIndex = ((agentIndex+1) % gameState.getNumAgents())
-        # print(f"Agent {agentIndex} => nextAgent{nextIndex}")
         return nextIndex
 
     def max_n(self, gameState: GameStateExtended, agentIndex, depth):
-        #print(f"Agent {agentIndex} => maxN depth={depth}")
         # Casos base:
         if depth == 0:
             if self.unroll_type == "MC":
@@ -167,8 +164,6 @@ class MaxNAgent(Agent):
         player = agentIndex
         while (not state.isEnd()) & (unroll_number > 0):
             unroll_number -= 1
-            
-            #print(f'Agent {player} => Unroll step {unroll_number}')
             actions = state.getLegalActions(player)
             random_action = random.choice(actions)
             state = state.generateSuccessor(player, random_action)
@@ -176,7 +171,6 @@ class MaxNAgent(Agent):
             if state.isEnd():
                 V = state.get_rewards()
             elif unroll_number <= 0:
-                # duda player o agent index?
                 V = self.evaluation_function(state, player)
 
             player = self.get_next_agent_index(player, state)
