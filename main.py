@@ -42,7 +42,6 @@ def run_one_layout(layout = "mediumGrid"):
     turn_index = 0
     while (not(done)):
         view = process_state(game_state, (2,2), turn_index)
-        #print(view)
 
         action = agents[turn_index].getAction(game_state)
         game_state, rewards, done, info = env.step(action, turn_index)        
