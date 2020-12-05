@@ -32,12 +32,12 @@ def get_default_agents(starting_index, num_ghosts = 10):
 
 def run_one_layout(layout = "mediumGrid"):   
     pacman_agent = RandomPacman(index = 0)
-    ghost_agent_0 = MaxNAgent(index = 1, unroll_type="MCTS", max_unroll_depth=12, number_of_unrolls=6)
-    ghost_agent_1 = MaxNAgent(index = 2, unroll_type="MC", max_unroll_depth=12, number_of_unrolls=10)
+    ghost_agent_0 = MaxNAgent(index = 1, unroll_type="MCTS", max_unroll_depth=5, number_of_unrolls=10, eval_id=3, use_eval_in_end=True)
+    ghost_agent_1 = MaxNAgent(index = 2, unroll_type="MC", max_unroll_depth=5, number_of_unrolls=10, eval_id=3)
     agents = [pacman_agent, ghost_agent_0, ghost_agent_1]
-    agents.extend(get_default_agents(3, 10))    
+    agents.extend(get_default_agents(3, 10))
     done = False
-    env = PacmanEnvAbs(agents = agents, view_distance = (2, 2))      
+    env = PacmanEnvAbs(agents = agents, view_distance = (2, 2))     
     game_state = env.reset(enable_render= True, layout_name= layout)
     turn_index = 0
     while (not(done)):
@@ -51,4 +51,4 @@ def run_one_layout(layout = "mediumGrid"):
             else "Pacman Lose,", "Scores:", game_state.get_rewards())
 
 if __name__ == '__main__':
-    run_one_layout("mediumClassic")
+    run_one_layout("smallClassic")
